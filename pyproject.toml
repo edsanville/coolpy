@@ -1,0 +1,22 @@
+[build-system]
+# Specifies the build backend (PEP 517/518)
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "coolpy"
+version = "0.1.0"
+description = "A package that does cool things with Python."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Edward Sanville", email = "edsanville@gmail.com" }
+]
+
+# Runtime dependencies
+dependencies = [
+]
+
+[project.urls]
+Repository = "https://github.com/edsanville/coolpy"
