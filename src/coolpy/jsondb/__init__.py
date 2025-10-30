@@ -103,6 +103,24 @@ class JsonDB:
         for key_path in self.indices:
             self._update_index(key_path, obj, data_id)
 
+    
+    def replace(self, obj: T, key_path: str, value: any):
+        self.add_index(key_path)
+
+        cursor = self.conn.execute(f'''
+            SELECT data_id FROM data NATURAL JOIN {table_name(key_path)} 
+            WHERE value is ?
+        ''', (value,))
+
+        for row in cursor.fetchall():
+            data_id = row[0]
+            s = json.dumps(obj)
+            self.conn.execute('UPDATE data SET json = ? WHERE data_id = ?', (s, data_id))
+
+            # Update indices
+            for key_path in self.indices:
+                self._update_index(key_path, obj, data_id)
+
 
     def _update_index(self, key_path: str, obj: T, data_id: int):
         tbl_name = table_name(key_path)

@@ -13,7 +13,7 @@ def test_jsondb():
 
     @dataclass
     class TestClass:
-        a: int
+        index: int
         b: float
         c: list[int]
         d: dict[str, float]
@@ -26,12 +26,15 @@ def test_jsondb():
 
     db = jsondb.JsonDB(db_path, TestClass)
 
+    # Test inserting items
+    NUM_ITEMS = 10
+
     with db.transaction():
-        for i in range(10):
+        for i in range(NUM_ITEMS):
             test = TestClass(
-                a=42,
-                b=random.uniform(0, 100),
-                c=[1, 2, random.choice(range(10))],
+                index=i,
+                b=3.14,
+                c=[1, 2, i],
                 d={"x": 1.0, "y": 2.0},
                 e={"foo", "bar"},
                 f=InnerClass(x=10, y="test")
@@ -40,23 +43,39 @@ def test_jsondb():
             db.insert(test)
 
     all_items = db.load_all()
-    assert len(all_items) == 10
+    assert len(all_items) == NUM_ITEMS
+
+    # Test querying
 
     query_results = db.query("c", 5)
+    assert len(query_results) == 1
+    assert 5 in query_results[0].c
+
+    # Test inserting and updating the indices
 
     with db.transaction():
         db.insert(TestClass(
-            a=100,
+            index=NUM_ITEMS + 1,
             b=50.5,
-            c=[5, 6, 7],
+            c=[5, 603, 7],
             d={"x": 3.0, "y": 4.0},
             e={"baz"},
             f=InnerClass(x=20, y="example")
         ))
 
-    query_results = db.query("c", 5)
+    query_results = db.query("c", 603)
+    assert len(query_results) == 1
+    assert 603 in query_results[0].c
 
-    print(query_results)
+    # Test replacing an item
+    with db.transaction():
+        item_to_replace = all_items[0]
+        item_to_replace.b = 99.9
+        db.replace(item_to_replace, 'index', item_to_replace.index)
+
+    query_results = db.query("index", item_to_replace.index)
+    assert len(query_results) == 1
+    assert query_results[0].b == 99.9
 
     print("JSONDB test passed.")
 
