@@ -96,6 +96,30 @@ class JsonDB:
         s = json.dumps(obj)
         self.conn.execute('INSERT INTO data (json) VALUES (?)', (s,))
 
+        # Update indices
+        cursor = self.conn.execute('SELECT last_insert_rowid()')
+        data_id = cursor.fetchone()[0]
+
+        for key_path in self.indices:
+            self._update_index(key_path, obj, data_id)
+
+
+    def _update_index(self, key_path: str, obj: T, data_id: int):
+        tbl_name = table_name(key_path)
+
+        # Remove existing entries
+        self.conn.execute(f'DELETE FROM {tbl_name} WHERE data_id = ?', (data_id,))
+
+        value = getattr_path(obj, key_path)
+        if value is None:
+            return
+
+        if isinstance(value, (list, set)):
+            for v in value:
+                self.conn.execute(f'INSERT INTO {tbl_name} (data_id, value) VALUES (?, ?)', (data_id, v))
+        else:
+            self.conn.execute(f'INSERT INTO {tbl_name} (data_id, value) VALUES (?, ?)', (data_id, value))
+
 
     def add_index(self, key_path: str):
         if key_path in self.indices:
@@ -117,15 +141,8 @@ class JsonDB:
             for row in cursor.fetchall():
                 data_id = row[0]
                 obj = json.loads(row[1], self.Class)
-                value = getattr_path(obj, key_path)
-                if value is None:
-                    continue
 
-                if isinstance(value, (list, set)):
-                    for v in value:
-                        self.conn.execute(f'INSERT INTO {tbl_name} (data_id, value) VALUES (?, ?)', (data_id, v))
-                else:
-                    self.conn.execute(f'INSERT INTO {tbl_name} (data_id, value) VALUES (?, ?)', (data_id, value))
+                self._update_index(key_path, obj, data_id)
 
             self.conn.execute(f'CREATE INDEX IF NOT EXISTS {idx_name} ON {tbl_name} (value)')
         self.indices.add(key_path)

@@ -43,6 +43,19 @@ def test_jsondb():
     assert len(all_items) == 10
 
     query_results = db.query("c", 5)
+
+    with db.transaction():
+        db.insert(TestClass(
+            a=100,
+            b=50.5,
+            c=[5, 6, 7],
+            d={"x": 3.0, "y": 4.0},
+            e={"baz"},
+            f=InnerClass(x=20, y="example")
+        ))
+
+    query_results = db.query("c", 5)
+
     print(query_results)
 
     print("JSONDB test passed.")
