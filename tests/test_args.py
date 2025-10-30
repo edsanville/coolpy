@@ -6,7 +6,7 @@ class Args:
     """Test for coolpy.args"""
     names: list[str] = Arg(default=None, help="Names of the users", nargs="+", choices=["Alice", "Bob", "Charlie"])
     age: int = Arg(help="Age of the user", flags=["-a"])
-    foo: bool = Arg(default=False, help="A boolean flag")
+    foo: bool = Arg(help="A boolean flag")
     log_level: str = Arg(default="INFO", help="Logging level", choices=logging.getLevelNamesMapping().keys())
 
 

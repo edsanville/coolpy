@@ -59,6 +59,10 @@ def parse_args(args: T, prog: str=os.path.basename(sys.argv[0]), description: st
                 function_args = arg.flags
                 optional = True
 
+        if 'default' in function_kwargs:
+            function_kwargs['help'] = (function_kwargs.get('help', '') +
+                                      f' (default: {function_kwargs["default"]})').strip()
+
         # bools are special cased
         if ArgType == bool:
             function_args.append(f'--{arg_name}')
