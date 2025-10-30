@@ -1,0 +1,152 @@
+import coolpy.json as json
+from typing import Callable, TypeVar
+import sqlite3
+
+T = TypeVar('T')
+
+
+def getattr_path(obj: any, key_path: str) -> any:
+    keys = key_path.split('.')
+    current = obj
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            current = getattr(current, key, None)
+
+        if current is None:
+            return None
+    return current
+
+
+def get_type_at_path(Class: Callable[[], T], key_path: str) -> any:
+    from typing import get_type_hints, get_origin, get_args
+
+    keys = key_path.split('.')
+    current_type = Class
+
+    for key in keys:
+        hints = get_type_hints(current_type)
+        if key not in hints:
+            return None
+
+        current_type = hints[key]
+
+        origin = get_origin(current_type)
+        args = get_args(current_type)
+
+        if origin == list or origin == set:
+            current_type = args[0]
+        elif origin == dict:
+            current_type = args[1]
+
+    return current_type
+
+
+def table_name(key_path: str) -> str:
+    return f'tbl_{"_".join(key_path.split("."))}'
+
+
+def index_name(key_path: str) -> str:
+    return f'idx_{"_".join(key_path.split("."))}'
+
+
+class Transaction:
+    db: sqlite3.Connection
+
+    def __init__(self, db: sqlite3.Connection):
+        self.db = db
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is None:
+            self.db.commit()
+        else:
+            self.db.rollback()
+            print(exc_type, exc_value, traceback)
+            exit(1)
+
+
+class JsonDB:
+    path: str
+    Class: Callable[[], T]
+    conn: sqlite3.Connection
+    indices: set[str] = set()
+
+    def __init__(self, path: str, Class: Callable[[], T]):
+        self.path = path
+        self.Class = Class
+        self.conn = sqlite3.connect(path)
+        self.conn.execute('''
+            CREATE TABLE IF NOT EXISTS data (
+                data_id INTEGER PRIMARY KEY,
+                json TEXT NOT NULL
+            )
+        ''')
+        self.conn.commit()
+
+
+    def transaction(self) -> Transaction:
+        return Transaction(self.conn)
+
+
+    def insert(self, obj: T):
+        s = json.dumps(obj)
+        self.conn.execute('INSERT INTO data (json) VALUES (?)', (s,))
+
+
+    def add_index(self, key_path: str):
+        if key_path in self.indices:
+            return
+
+        tbl_name = table_name(key_path)
+        idx_name = index_name(key_path)
+
+        with self.transaction():
+            self.conn.execute(f'''
+                CREATE TABLE IF NOT EXISTS {tbl_name} (
+                    data_id INTEGER,
+                    value TEXT,
+                    FOREIGN KEY(data_id) REFERENCES data(data_id)
+                )
+            ''')
+
+            cursor = self.conn.execute('SELECT data_id, json FROM data')
+            for row in cursor.fetchall():
+                data_id = row[0]
+                obj = json.loads(row[1], self.Class)
+                value = getattr_path(obj, key_path)
+                if value is None:
+                    continue
+
+                if isinstance(value, (list, set)):
+                    for v in value:
+                        self.conn.execute(f'INSERT INTO {tbl_name} (data_id, value) VALUES (?, ?)', (data_id, v))
+                else:
+                    self.conn.execute(f'INSERT INTO {tbl_name} (data_id, value) VALUES (?, ?)', (data_id, value))
+
+            self.conn.execute(f'CREATE INDEX IF NOT EXISTS {idx_name} ON {tbl_name} (value)')
+        self.indices.add(key_path)
+
+
+    def query(self, key_path: str, value: any) -> list[T]:
+        if key_path not in self.indices:
+            # Create an index on this key path
+            self.add_index(key_path)
+
+        cursor = self.conn.execute('SELECT json FROM data NATURAL JOIN ' + table_name(key_path) + ' WHERE value is ?', (value,))
+        print('SELECT json FROM data NATURAL JOIN ' + table_name(key_path) + ' WHERE value is ?', (value,))
+        return [json.loads(row[0], self.Class) for row in cursor.fetchall()]
+
+
+    def load_all(self) -> list[T]:
+        cursor = self.conn.execute('SELECT json FROM data')
+        return [json.loads(row[0], self.Class) for row in cursor.fetchall()]
+
+    def close(self):
+        self.conn.close()
+
+    def __del__(self):
+        self.close()
