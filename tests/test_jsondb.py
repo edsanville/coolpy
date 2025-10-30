@@ -50,6 +50,10 @@ def test_jsondb():
     query_results = db.query("c", 5)
     assert len(query_results) == 1
     assert 5 in query_results[0].c
+    query_results = db.query("d.x", 1.0)
+    assert len(query_results) == NUM_ITEMS
+    query_results = db.query("e", "foo")
+    assert len(query_results) == NUM_ITEMS
 
     # Test inserting and updating the indices
 
