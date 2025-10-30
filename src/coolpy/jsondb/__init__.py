@@ -126,7 +126,11 @@ class JsonDB:
             self._replace(obj, data_id)
 
     
-    def upsert(self, obj: T, key_path: str, update_func: Callable[[T, T], T]):
+    def upsert(self, obj: T, key_path: str, update_func: Callable[[T, T], T] = None):
+        if update_func is None:
+            import coolpy.merge
+            update_func = coolpy.merge.merge
+
         self.add_index(key_path)
 
         value = getattr_path(obj, key_path)

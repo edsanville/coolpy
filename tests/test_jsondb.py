@@ -81,14 +81,14 @@ def test_jsondb():
     with db.transaction():
         upsert_item = TestClass(
             index=5,
+            b=77.7,
+            c=[42, 43],
+            d={"z": 9.9},
             e={"upsert"},
+            f=InnerClass(x=30, y="upserted")
         )
 
-        def update_func(existing: TestClass, new: TestClass) -> TestClass:
-            existing.e = existing.e.union(new.e)
-            return existing
-
-        db.upsert(upsert_item, 'index', update_func)
+        db.upsert(upsert_item, 'index')
 
     query_results = db.query("index", upsert_item.index)
     assert len(query_results) == 1
