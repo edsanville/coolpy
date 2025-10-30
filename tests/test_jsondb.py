@@ -14,10 +14,10 @@ def test_jsondb():
     @dataclass
     class TestClass:
         index: int
-        b: float
-        c: list[int]
-        d: dict[str, float]
-        e: set[str]
+        b: float = None
+        c: list[int] = None
+        d: dict[str, float] = None
+        e: set[str] = None
         f: InnerClass = None
 
     db_path = "test_db.jsondb"
@@ -76,6 +76,23 @@ def test_jsondb():
     query_results = db.query("index", item_to_replace.index)
     assert len(query_results) == 1
     assert query_results[0].b == 99.9
+
+    # Test upserting an item
+    with db.transaction():
+        upsert_item = TestClass(
+            index=5,
+            e={"upsert"},
+        )
+
+        def update_func(existing: TestClass, new: TestClass) -> TestClass:
+            existing.e = existing.e.union(new.e)
+            return existing
+
+        db.upsert(upsert_item, 'index', update_func)
+
+    query_results = db.query("index", upsert_item.index)
+    assert len(query_results) == 1
+    assert "upsert" in query_results[0].e
 
     print("JSONDB test passed.")
 

@@ -104,6 +104,15 @@ class JsonDB:
             self._update_index(key_path, obj, data_id)
 
     
+    def _replace(self, obj: T, data_id: int):
+        s = json.dumps(obj)
+        self.conn.execute('UPDATE data SET json = ? WHERE data_id = ?', (s, data_id))
+
+        # Update indices
+        for key_path in self.indices:
+            self._update_index(key_path, obj, data_id)
+
+
     def replace(self, obj: T, key_path: str, value: any):
         self.add_index(key_path)
 
@@ -114,12 +123,34 @@ class JsonDB:
 
         for row in cursor.fetchall():
             data_id = row[0]
-            s = json.dumps(obj)
-            self.conn.execute('UPDATE data SET json = ? WHERE data_id = ?', (s, data_id))
+            self._replace(obj, data_id)
 
-            # Update indices
-            for key_path in self.indices:
-                self._update_index(key_path, obj, data_id)
+    
+    def upsert(self, obj: T, key_path: str, update_func: Callable[[T, T], T]):
+        self.add_index(key_path)
+
+        value = getattr_path(obj, key_path)
+        assert value is not None
+
+        cursor = self.conn.execute(f'''
+            SELECT data_id, json FROM data NATURAL JOIN {table_name(key_path)} 
+            WHERE value is ?
+        ''', (value,))
+
+        rows = cursor.fetchall()
+        if len(rows) == 0:
+            # Insert new
+            self.insert(obj)
+            return
+        
+        for row in rows:
+            data_id = row[0]
+            existing_obj = json.loads(row[1], self.Class)
+
+            if update_func is not None:
+                obj = update_func(existing_obj, obj)
+
+            self._replace(obj, data_id)
 
 
     def _update_index(self, key_path: str, obj: T, data_id: int):
@@ -172,7 +203,6 @@ class JsonDB:
             self.add_index(key_path)
 
         cursor = self.conn.execute('SELECT json FROM data NATURAL JOIN ' + table_name(key_path) + ' WHERE value is ?', (value,))
-        print('SELECT json FROM data NATURAL JOIN ' + table_name(key_path) + ' WHERE value is ?', (value,))
         return [json.loads(row[0], self.Class) for row in cursor.fetchall()]
 
 
