@@ -2,7 +2,9 @@ import typing as t
 import argparse
 import os
 import sys
-from dataclasses import _MISSING_TYPE, Field, dataclass
+from dataclasses import dataclass
+
+"""Use a class with type hints to define and parse command line arguments."""
 
 @dataclass
 class Arg:
@@ -18,6 +20,16 @@ T = t.TypeVar('T')
 
 
 def parse_args(args: T, prog: str=os.path.basename(sys.argv[0]), description: str=None) -> T:
+    """Parse command-line arguments using a class with type hints for each argument.
+
+    Args:
+        args (T): An instance of a class with a type-hinted attribute for each argument, and optional Arg metadata.
+        prog (str, optional): The name of the program. Defaults to os.path.basename(sys.argv[0]).
+        description (str, optional): A brief description of the program. Defaults to None.
+
+    Returns:
+        T: An instance of the class with the parsed arguments.
+    """
     if description is None:
         description = args.__doc__
 
@@ -63,7 +75,6 @@ def parse_args(args: T, prog: str=os.path.basename(sys.argv[0]), description: st
             else:
                 function_kwargs['type'] = ArgType
 
-        print(function_args, function_kwargs)
         parser.add_argument(*function_args, **function_kwargs)
 
     args = parser.parse_args()
