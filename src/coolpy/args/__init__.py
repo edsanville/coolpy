@@ -2,37 +2,49 @@ import typing as t
 import argparse
 import os
 import sys
-from dataclasses import dataclass, _MISSING_TYPE, Field
+from dataclasses import _MISSING_TYPE, Field, dataclass
+
+@dataclass
+class Arg:
+    default: any = None
+    default_factory: t.Callable[[], any] = None
+    help: str = None
+    flags: list[str] = None
+    nargs: int = None
+    choices: list[any] = None
 
 
-def parse_args(ArgsClass, prog: str=os.path.basename(sys.argv[0]), description: str=None):
+T = t.TypeVar('T')
+
+
+def parse_args(args: T, prog: str=os.path.basename(sys.argv[0]), description: str=None) -> T:
     if description is None:
-        description = ArgsClass.__doc__
+        description = args.__doc__
 
     parser = argparse.ArgumentParser(prog=prog, description=description)
 
-    for arg_name, ArgType in t.get_type_hints(ArgsClass).items():
+    for arg_name, ArgType in t.get_type_hints(args).items():
+        arg: Arg = getattr(args, arg_name, None)
+
         optional = False
         function_args = []
         function_kwargs = {}
 
-        # Get dataclass field info if available
-        field_info: Field = getattr(ArgsClass, '__dataclass_fields__', {}).get(arg_name)
-        if field_info is not None:
-            if not isinstance(field_info.default, _MISSING_TYPE):
-                function_kwargs['default'] = field_info.default
+        if arg is not None:
+            if arg.default is not None:
+                function_kwargs['default'] = arg.default
                 optional = True
-            if 'help' in field_info.metadata:
-                function_kwargs['help'] = field_info.metadata['help']
-            if not isinstance(field_info.default_factory, _MISSING_TYPE):
-                function_kwargs['default'] = field_info.default_factory()
+            if arg.help is not None:
+                function_kwargs['help'] = arg.help
+            if arg.default_factory is not None:
+                function_kwargs['default'] = arg.default_factory()
                 optional = True
-            if 'nargs' in field_info.metadata:
-                function_kwargs['nargs'] = field_info.metadata['nargs']
-            if 'choices' in field_info.metadata:
-                function_kwargs['choices'] = field_info.metadata['choices']
-            if 'flags' in field_info.metadata:
-                function_args = field_info.metadata['flags']
+            if arg.nargs is not None:
+                function_kwargs['nargs'] = arg.nargs
+            if arg.choices is not None:
+                function_kwargs['choices'] = arg.choices
+            if arg.flags is not None:
+                function_args = arg.flags
                 optional = True
 
         # bools are special cased
