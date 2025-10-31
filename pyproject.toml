@@ -16,6 +16,7 @@ authors = [
 
 # Runtime dependencies
 dependencies = [
+    'requests>=2.25.1',
 ]
 
 [project.urls]
