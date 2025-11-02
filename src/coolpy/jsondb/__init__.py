@@ -1,6 +1,14 @@
+import os
+import traceback
+import types
 import coolpy.json as json
 from typing import Callable, TypeVar
 import sqlite3
+import logging
+
+logging.basicConfig(level=logging.INFO)
+l = logging.getLogger(__name__)
+
 
 T = TypeVar('T')
 
@@ -60,12 +68,12 @@ class Transaction:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, tb: types.TracebackType):
         if exc_type is None:
             self.db.commit()
         else:
             self.db.rollback()
-            print(exc_type, exc_value, traceback)
+            traceback.print_exception(exc_type, exc_value, tb)
             exit(1)
 
 
@@ -75,9 +83,16 @@ class JsonDB:
     conn: sqlite3.Connection
     indices: set[str] = set()
 
-    def __init__(self, path: str, Class: Callable[[], T]):
+    def __init__(self, path: str, Class: Callable[[], T], overwrite: bool = False):
         self.path = path
         self.Class = Class
+
+        if overwrite:
+            try:
+                os.remove(path)
+            except FileNotFoundError:
+                pass
+
         self.conn = sqlite3.connect(path)
         self.conn.execute('''
             CREATE TABLE IF NOT EXISTS data (
@@ -134,7 +149,10 @@ class JsonDB:
         self.add_index(key_path)
 
         value = getattr_path(obj, key_path)
-        assert value is not None
+
+        if value is None:
+            self.insert(obj)
+            return
 
         cursor = self.conn.execute(f'''
             SELECT data_id, json FROM data NATURAL JOIN {table_name(key_path)} 
@@ -181,23 +199,33 @@ class JsonDB:
         tbl_name = table_name(key_path)
         idx_name = index_name(key_path)
 
+        l.debug(f"Adding index on key path '{key_path}'")
         with self.transaction():
             self.conn.execute(f'''
                 CREATE TABLE IF NOT EXISTS {tbl_name} (
                     data_id INTEGER,
                     value TEXT,
                     FOREIGN KEY(data_id) REFERENCES data(data_id)
+                    UNIQUE(data_id, value)
                 )
             ''')
 
+            self.conn.execute(f'CREATE INDEX IF NOT EXISTS {idx_name} ON {tbl_name} (value)')
+            self.conn.execute(f'CREATE INDEX IF NOT EXISTS {tbl_name}_data_id ON {tbl_name} (data_id)')
+
             cursor = self.conn.execute('SELECT data_id, json FROM data')
+            index = 0
             for row in cursor.fetchall():
                 data_id = row[0]
                 obj = json.loads(row[1], self.Class)
 
                 self._update_index(key_path, obj, data_id)
 
-            self.conn.execute(f'CREATE INDEX IF NOT EXISTS {idx_name} ON {tbl_name} (value)')
+                index += 1
+
+                if index % 100000 == 0:
+                    l.info(f"Indexed {index} rows for key path '{key_path}'")
+
         self.indices.add(key_path)
 
 
@@ -215,6 +243,7 @@ class JsonDB:
         return [json.loads(row[0], self.Class) for row in cursor.fetchall()]
 
     def close(self):
+        self.conn.commit()
         self.conn.close()
 
     def __del__(self):
