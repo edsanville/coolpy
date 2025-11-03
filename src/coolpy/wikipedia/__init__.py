@@ -50,9 +50,10 @@ class Wikipedia:
             response = Wikipedia.query(params)
             items.extend(response.get("query", {}).get("embeddedin", []))
 
-            if "eicontinue" not in response:
+            if "continue" not in response:
                 break
-            params.update(response["eicontinue"])
+
+            params.update(response["continue"])
 
         return items
     
