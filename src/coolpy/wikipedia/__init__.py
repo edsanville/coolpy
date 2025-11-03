@@ -9,6 +9,7 @@ class Wikipedia:
     HEADERS = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
     }
+    session = requests.Session()
 
     @staticmethod
     def query(params: dict) -> dict:
@@ -21,7 +22,7 @@ class Wikipedia:
         Returns:
             dict: The JSON response from the Wikipedia API.
         """
-        response = requests.get(Wikipedia.API_URL, params=params, headers=Wikipedia.HEADERS)
+        response = Wikipedia.session.get(Wikipedia.API_URL, params=params, headers=Wikipedia.HEADERS)
         response.raise_for_status()
         return response.json()
 
@@ -57,3 +58,36 @@ class Wikipedia:
 
         return items
     
+    @staticmethod
+    def get_language_links(title: str, namespace: int=0) -> dict[str, str]:
+        """Get the language links for a given page title.
+
+        Args:
+            title (str): The title of the page.
+            namespace (int, optional): The namespace of the page. Defaults to 0.
+
+        Returns:
+            dict[str, str]: A dictionary mapping language codes to their corresponding titles.
+        """
+        params = {
+            "action": "query",
+            "prop": "langlinks",
+            "lllimit": "max",
+            "llprop": "url",
+            "format": "json",
+            "titles": title,
+            "namespace": namespace
+        }
+
+        wikilinks: dict[str, str] = {}
+        while True:
+            response = Wikipedia.query(params)
+            langlinks = response["query"]["pages"].popitem()[1].get("langlinks", [])
+            wikilinks.update({link["lang"]: link["url"] for link in langlinks})
+
+            if "continue" not in response:
+                break
+
+            params.update(response["continue"])
+
+        return wikilinks
