@@ -272,9 +272,10 @@ class JsonDB:
         return [json.loads(row[0], self.Class) for row in cursor.fetchall()]
 
 
-    def load_all(self, sql: str='') -> list[T]:
+    def load_all(self, sql: str=''):
         cursor = self.conn.execute(f'SELECT json FROM data {sql}')
-        return [json.loads(row[0], self.Class) for row in cursor.fetchall()]
+        for row in cursor:
+            yield json.loads(row[0], self.Class)
 
     def close(self):
         self.conn.commit()

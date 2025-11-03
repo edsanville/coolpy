@@ -42,7 +42,7 @@ def test_jsondb():
 
             db.insert(test)
 
-    all_items = db.load_all()
+    all_items = list(db.load_all())
     assert len(all_items) == NUM_ITEMS
 
     # Test querying
