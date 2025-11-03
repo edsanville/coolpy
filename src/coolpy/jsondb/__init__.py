@@ -6,6 +6,15 @@ from typing import Callable, TypeVar
 import sqlite3
 import logging
 
+
+# TODO:
+# Use correct types for the value column in side tables
+# Automatically detect existing indices on load
+
+# Less important:
+# Support deleting items
+
+
 logging.basicConfig(level=logging.INFO)
 l = logging.getLogger(__name__)
 
@@ -52,11 +61,11 @@ def get_type_at_path(Class: Callable[[], T], key_path: str) -> any:
 
 
 def table_name(key_path: str) -> str:
-    return f'tbl_{"_".join(key_path.split("."))}'
+    return f'{"__".join(key_path.split("."))}'
 
 
 def index_name(key_path: str) -> str:
-    return f'idx_{"_".join(key_path.split("."))}'
+    return f'index_{table_name(key_path)}'
 
 
 class Transaction:
@@ -131,9 +140,10 @@ class JsonDB:
     def replace(self, obj: T, key_path: str, value: any):
         self.add_index(key_path)
 
+        tbl_name = table_name(key_path)
         cursor = self.conn.execute(f'''
-            SELECT data_id FROM data NATURAL JOIN {table_name(key_path)} 
-            WHERE value is ?
+            SELECT data_id FROM data NATURAL JOIN {tbl_name} 
+            WHERE {tbl_name} is ?
         ''', (value,))
 
         for row in cursor.fetchall():
@@ -154,9 +164,10 @@ class JsonDB:
             self.insert(obj)
             return
 
+        tbl_name = table_name(key_path)
         cursor = self.conn.execute(f'''
-            SELECT data_id, json FROM data NATURAL JOIN {table_name(key_path)} 
-            WHERE value is ?
+            SELECT data_id, json FROM data NATURAL JOIN {tbl_name} 
+            WHERE {tbl_name} is ?
         ''', (value,))
 
         rows = cursor.fetchall()
@@ -187,9 +198,9 @@ class JsonDB:
 
         if isinstance(value, (list, set)):
             for v in value:
-                self.conn.execute(f'INSERT INTO {tbl_name} (data_id, value) VALUES (?, ?)', (data_id, v))
+                self.conn.execute(f'INSERT INTO {tbl_name} (data_id, {tbl_name}) VALUES (?, ?)', (data_id, v))
         else:
-            self.conn.execute(f'INSERT INTO {tbl_name} (data_id, value) VALUES (?, ?)', (data_id, value))
+            self.conn.execute(f'INSERT INTO {tbl_name} (data_id, {tbl_name}) VALUES (?, ?)', (data_id, value))
 
 
     def add_index(self, key_path: str):
@@ -204,13 +215,13 @@ class JsonDB:
             self.conn.execute(f'''
                 CREATE TABLE IF NOT EXISTS {tbl_name} (
                     data_id INTEGER,
-                    value TEXT,
+                    {tbl_name} TEXT,
                     FOREIGN KEY(data_id) REFERENCES data(data_id)
-                    UNIQUE(data_id, value)
+                    UNIQUE(data_id, {tbl_name})
                 )
             ''')
 
-            self.conn.execute(f'CREATE INDEX IF NOT EXISTS {idx_name} ON {tbl_name} (value)')
+            self.conn.execute(f'CREATE INDEX IF NOT EXISTS {idx_name} ON {tbl_name} ({tbl_name})')
             self.conn.execute(f'CREATE INDEX IF NOT EXISTS {tbl_name}_data_id ON {tbl_name} (data_id)')
 
             cursor = self.conn.execute('SELECT data_id, json FROM data')
@@ -234,7 +245,8 @@ class JsonDB:
             # Create an index on this key path
             self.add_index(key_path)
 
-        cursor = self.conn.execute('SELECT json FROM data NATURAL JOIN ' + table_name(key_path) + ' WHERE value is ?', (value,))
+        tbl_name = table_name(key_path)
+        cursor = self.conn.execute(f'SELECT json FROM data NATURAL JOIN {tbl_name} WHERE {tbl_name} is ?', (value,))
         return [json.loads(row[0], self.Class) for row in cursor.fetchall()]
 
 
