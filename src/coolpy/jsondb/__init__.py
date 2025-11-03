@@ -60,7 +60,17 @@ def get_type_at_path(Class: Callable[[], T], key_path: str) -> any:
     return current_type
 
 
+reserved_word_map = {
+    'index': 'idx',
+    'table': 'tbl',
+    'select': 'sel',
+    'from': 'frm',
+    'where': 'whr',
+}
+
+
 def table_name(key_path: str) -> str:
+    key_path = reserved_word_map.get(key_path, key_path)
     return f'{"__".join(key_path.split("."))}'
 
 
@@ -198,28 +208,40 @@ class JsonDB:
 
         if isinstance(value, (list, set)):
             for v in value:
-                self.conn.execute(f'INSERT INTO {tbl_name} (data_id, {tbl_name}) VALUES (?, ?)', (data_id, v))
+                self.conn.execute(f'INSERT OR REPLACE INTO {tbl_name} (data_id, {tbl_name}) VALUES (?, ?)', (data_id, v))
         else:
-            self.conn.execute(f'INSERT INTO {tbl_name} (data_id, {tbl_name}) VALUES (?, ?)', (data_id, value))
+            self.conn.execute(f'INSERT OR REPLACE INTO {tbl_name} (data_id, {tbl_name}) VALUES (?, ?)', (data_id, value))
 
 
     def add_index(self, key_path: str):
         if key_path in self.indices:
             return
-
+        
         tbl_name = table_name(key_path)
         idx_name = index_name(key_path)
 
+        # See if the index table already exists
+        cursor = self.conn.execute('''
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name=?
+        ''', (tbl_name,))
+        row = cursor.fetchone()
+        if row is not None:
+            self.indices.add(key_path)
+            return
+
         l.debug(f"Adding index on key path '{key_path}'")
         with self.transaction():
-            self.conn.execute(f'''
-                CREATE TABLE IF NOT EXISTS {tbl_name} (
+            cmd = f'''
+                CREATE TABLE {tbl_name} (
                     data_id INTEGER,
                     {tbl_name} TEXT,
                     FOREIGN KEY(data_id) REFERENCES data(data_id)
                     UNIQUE(data_id, {tbl_name})
                 )
-            ''')
+            '''
+            l.debug(f"Creating index table with command: {cmd}")
+            self.conn.execute(cmd)
 
             self.conn.execute(f'CREATE INDEX IF NOT EXISTS {idx_name} ON {tbl_name} ({tbl_name})')
             self.conn.execute(f'CREATE INDEX IF NOT EXISTS {tbl_name}_data_id ON {tbl_name} (data_id)')
