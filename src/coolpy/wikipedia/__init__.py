@@ -1,5 +1,4 @@
 import requests
-from dataclasses import dataclass
 
 
 class Wikipedia:
@@ -79,7 +78,9 @@ class Wikipedia:
             "namespace": namespace
         }
 
-        wikilinks: dict[str, str] = {}
+        wikilinks: dict[str, str] = {
+            'en': f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
+        }
         while True:
             response = Wikipedia.query(params)
             langlinks = response["query"]["pages"].popitem()[1].get("langlinks", [])
@@ -91,3 +92,20 @@ class Wikipedia:
             params.update(response["continue"])
 
         return wikilinks
+
+
+    @staticmethod
+    def get_language_links_titles(title: str, namespace: int=0) -> dict[str, str]:
+        """Get the language links for a given page title.
+
+        Args:
+            title (str): The title of the page.
+            namespace (int, optional): The namespace of the page. Defaults to 0.
+
+        Returns:
+            dict[str, str]: A dictionary mapping language codes to their corresponding titles.
+        """
+
+        wikilink_urls = Wikipedia.get_language_links(title, namespace)
+
+        return { lang: url.split("/")[-1] for lang, url in wikilink_urls.items() }
