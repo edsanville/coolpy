@@ -1,3 +1,4 @@
+from os import link
 import requests
 
 
@@ -58,7 +59,7 @@ class Wikipedia:
         return items
     
     @staticmethod
-    def get_language_links(title: str, namespace: int=0) -> dict[str, str]:
+    def get_language_links(title: str, namespace: int=0, language_isos: set[str] | None=None) -> dict[str, str]:
         """Get the language links for a given page title.
 
         Args:
@@ -84,7 +85,11 @@ class Wikipedia:
         while True:
             response = Wikipedia.query(params)
             langlinks = response["query"]["pages"].popitem()[1].get("langlinks", [])
-            wikilinks.update({link["lang"]: link["url"] for link in langlinks})
+
+            for link in langlinks:
+                if link['lang'] not in language_isos:
+                    continue
+                wikilinks[link["lang"]] = link["url"]
 
             if "continue" not in response:
                 break
@@ -106,9 +111,6 @@ class Wikipedia:
             dict[str, str]: A dictionary mapping language codes to their corresponding titles.
         """
 
-        wikilink_urls = Wikipedia.get_language_links(title, namespace)
-
-        if language_isos:
-            wikilink_urls = {lang: url for lang, url in wikilink_urls.items() if lang in language_isos}
+        wikilink_urls = Wikipedia.get_language_links(title, namespace, language_isos)
 
         return { lang: url.split("/")[-1] for lang, url in wikilink_urls.items() }
