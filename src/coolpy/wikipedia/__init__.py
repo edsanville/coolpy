@@ -1,4 +1,4 @@
-import requests_cache
+from coolpy.caching import CachedRequests
 
 class Wikipedia:
     """A simple Wikipedia API wrapper."""
@@ -7,7 +7,7 @@ class Wikipedia:
     HEADERS = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
     }
-    session = requests_cache.CachedSession("wikipedia_cache", expire_after=30 * 24 * 60)
+    session = CachedRequests(expiration_days=30, throttle_seconds=0.1)
 
     @staticmethod
     def query(params: dict) -> dict:
@@ -20,7 +20,9 @@ class Wikipedia:
         Returns:
             dict: The JSON response from the Wikipedia API.
         """
-        response = Wikipedia.session.get(Wikipedia.API_URL, params=params, headers=Wikipedia.HEADERS)
+        sorted_params = dict(sorted(params.items()))
+        sorted_headers = dict(sorted(Wikipedia.HEADERS.items()))
+        response = Wikipedia.session.get(Wikipedia.API_URL, params=sorted_params, headers=sorted_headers)
         response.raise_for_status()
         return response.json()
 
