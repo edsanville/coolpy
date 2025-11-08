@@ -1,6 +1,4 @@
-from os import link
-import requests
-
+import requests_cache
 
 class Wikipedia:
     """A simple Wikipedia API wrapper."""
@@ -9,7 +7,7 @@ class Wikipedia:
     HEADERS = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
     }
-    session = requests.Session()
+    session = requests_cache.CachedSession("wikipedia_cache", expire_after=30 * 24 * 60)
 
     @staticmethod
     def query(params: dict) -> dict:
