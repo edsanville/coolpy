@@ -95,7 +95,7 @@ class Wikipedia:
 
 
     @staticmethod
-    def get_language_links_titles(title: str, namespace: int=0) -> dict[str, str]:
+    def get_language_links_titles(title: str, namespace: int=0, language_isos: set[str] | None=None) -> dict[str, str]:
         """Get the language links for a given page title.
 
         Args:
@@ -107,5 +107,8 @@ class Wikipedia:
         """
 
         wikilink_urls = Wikipedia.get_language_links(title, namespace)
+
+        if language_isos:
+            wikilink_urls = {lang: url for lang, url in wikilink_urls.items() if lang in language_isos}
 
         return { lang: url.split("/")[-1] for lang, url in wikilink_urls.items() }
