@@ -7,7 +7,7 @@ class Wikipedia:
     HEADERS = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
     }
-    session = CachedRequests(expiration_days=30, throttle_seconds=0.1)
+    session = CachedRequests(expiration_days=30, throttle_seconds=0.05)
 
     @staticmethod
     def query(params: dict) -> dict:

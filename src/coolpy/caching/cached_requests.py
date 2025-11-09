@@ -1,19 +1,26 @@
 import time
 from .cached_function import *
 import logging
+import requests
+from requests import Session
 
 log = logging.getLogger(__name__)
+
+session = requests.Session()
+
+def session_request(*args, **kwargs):
+    return session.request(*args, **kwargs)
+
 
 class CachedRequests:
     expiration_days: float
     throttle_seconds: float
 
     def __init__(self, expiration_days: float=1, throttle_seconds: float=0.0):
-        import requests
         self.expiration_days = expiration_days
         self.throttle_seconds = throttle_seconds
-        self.cached_request = cached_function(requests.api.request, days=expiration_days)
-        self.is_cache_hit = is_cache_hit(requests.api.request, days=expiration_days)
+        self.cached_request = cached_function(session_request, name='cached_requests', days=expiration_days)
+        self.is_cache_hit = is_cache_hit(session_request, name='cached_requests', days=expiration_days)
 
 
     def request(self, *args, **kwargs):
