@@ -59,12 +59,12 @@ class Wikipedia:
         return items
     
     @staticmethod
-    def get_language_links(title: str, namespace: int=0, language_isos: set[str] | None=None) -> dict[str, str]:
+    def get_language_links(title: str, language_isos: set[str] | None=None) -> dict[str, str]:
         """Get the language links for a given page title.
 
         Args:
             title (str): The title of the page.
-            namespace (int, optional): The namespace of the page. Defaults to 0.
+            language_isos (set[str] | None): A set of language ISO codes to filter the results. If None, all languages are returned.
 
         Returns:
             dict[str, str]: A dictionary mapping language codes to their corresponding titles.
@@ -76,7 +76,6 @@ class Wikipedia:
             "llprop": "url",
             "format": "json",
             "titles": title,
-            "namespace": namespace
         }
 
         wikilinks: dict[str, str] = {
@@ -87,7 +86,7 @@ class Wikipedia:
             langlinks = response["query"]["pages"].popitem()[1].get("langlinks", [])
 
             for link in langlinks:
-                if link['lang'] not in language_isos:
+                if language_isos is not None and link['lang'] not in language_isos:
                     continue
                 wikilinks[link["lang"]] = link["url"]
 
@@ -100,17 +99,16 @@ class Wikipedia:
 
 
     @staticmethod
-    def get_language_links_titles(title: str, namespace: int=0, language_isos: set[str] | None=None) -> dict[str, str]:
+    def get_language_links_titles(title: str, language_isos: set[str] | None=None) -> dict[str, str]:
         """Get the language links for a given page title.
 
         Args:
             title (str): The title of the page.
-            namespace (int, optional): The namespace of the page. Defaults to 0.
 
         Returns:
             dict[str, str]: A dictionary mapping language codes to their corresponding titles.
         """
 
-        wikilink_urls = Wikipedia.get_language_links(title, namespace, language_isos)
+        wikilink_urls = Wikipedia.get_language_links(title, language_isos)
 
         return { lang: url.split("/")[-1] for lang, url in wikilink_urls.items() }
