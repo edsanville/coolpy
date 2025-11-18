@@ -13,8 +13,10 @@ def test_wikipedia():
 
     wikilinks = Wikipedia.get_language_links_titles("Python (programming language)", language_isos={'en', 'fr', 'de', 'es', 'it', 'ja', 'zh'})
     assert len(wikilinks) == 7
-    for wikilink in wikilinks:
-        print(f"{wikilink:5s}: {wikilinks[wikilink]:80.80s}")
+    print(f"Found {len(wikilinks)} language links.")
+
+    wikilinks = Wikipedia.get_language_links_titles("Python (programming language)")
+    assert len(wikilinks) > 0
     print(f"Found {len(wikilinks)} language links.")
 
 if __name__ == "__main__":

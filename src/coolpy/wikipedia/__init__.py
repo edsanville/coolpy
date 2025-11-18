@@ -110,5 +110,10 @@ class Wikipedia:
         """
 
         wikilink_urls = Wikipedia.get_language_links(title, language_isos)
+        titles: dict[str, str] = {}
+        for lang, url in wikilink_urls.items():
+            components = url.split("wiki/")
+            assert len(components) == 2, f"Unexpected URL format: {url}"
+            titles[lang] = components[1]
 
-        return { lang: url.split("/")[-1] for lang, url in wikilink_urls.items() }
+        return titles
