@@ -87,7 +87,7 @@ class Wikipedia:
             langlinks = response["query"]["pages"].popitem()[1].get("langlinks", [])
 
             for link in langlinks:
-                if link['lang'] not in language_isos:
+                if language_isos and link['lang'] not in language_isos:
                     continue
                 wikilinks[link["lang"]] = link["url"]
 
@@ -112,5 +112,10 @@ class Wikipedia:
         """
 
         wikilink_urls = Wikipedia.get_language_links(title, namespace, language_isos)
+        titles: dict[str, str] = {}
+        for lang, url in wikilink_urls.items():
+            components = url.split("wiki/")
+            assert len(components) == 2, f"Unexpected URL format: {url}"
+            titles[lang] = components[1]
 
-        return { lang: url.split("/")[-1] for lang, url in wikilink_urls.items() }
+        return titles
