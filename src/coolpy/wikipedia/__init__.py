@@ -1,4 +1,10 @@
 from coolpy.caching import CachedRequests
+import json
+import logging
+import PIL.Image
+from PIL.Image import Image
+
+l = logging.getLogger(__name__)
 
 class Wikipedia:
     """A simple Wikipedia API wrapper."""
@@ -117,3 +123,82 @@ class Wikipedia:
             titles[lang] = components[1]
 
         return titles
+
+
+    @staticmethod
+    def get_wikicode(title: str) -> str:
+        """Get the wikicode for a given page title.
+
+        Args:
+            title (str): The title of the page.
+        """
+
+        params = {
+            "action": "query",
+            "prop": "revisions",
+            "rvprop": "content",
+            "format": "json",
+            "titles": title,
+        }
+
+        response = Wikipedia.query(params)
+        page = response["query"]["pages"].popitem()[1]
+        content: str = page["revisions"][0]["*"]
+        return content
+
+
+    @staticmethod
+    def get_lead_image_url(title: str) -> str:
+        """Get the lead image URL for a given page title.
+
+        Args:
+            title (str): The title of the page.
+        """
+        params = {
+            "action": "query",
+            "prop": "pageimages",
+            "piprop": "original",
+            "format": "json",
+            "titles": title,
+
+            "pithumbsize": 500
+        }
+
+        response = Wikipedia.query(params)
+        url: str = response["query"]["pages"].popitem()[1]["original"]["source"]
+        return url        
+
+
+    @staticmethod
+    def get_pil_image(image_url: str, size: tuple[int, int] | None=None) -> Image:
+        """Get the image data for a given image title.
+
+        Args:
+            image_title (str): The title of the image.
+            size (tuple[int, int] | None): The desired size of the image. If None, the original size is returned.
+        """
+        from io import BytesIO
+
+        response = Wikipedia.session.get(image_url, headers=Wikipedia.HEADERS)
+        response.raise_for_status()
+        data: bytes = response.content
+        image: Image = PIL.Image.open(BytesIO(data)).convert('RGB')
+
+        if size is not None:
+            ratio = max(size[0] / image.size[0], size[1] / image.size[1])
+            targetSize = (int(image.size[0] * ratio), int(image.size[1] * ratio))
+            image = image.resize(targetSize)
+        
+        return image
+    
+
+    @staticmethod
+    def get_lead_image_pil(title: str, size: tuple[int, int] | None=None) -> Image:
+        """Get the lead image for a given page title.
+
+        Args:
+            title (str): The title of the page.
+        """
+        image_url = Wikipedia.get_lead_image_url(title)
+        image = Wikipedia.get_pil_image(image_url, size)
+        return image

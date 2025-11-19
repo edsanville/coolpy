@@ -19,5 +19,8 @@ def test_wikipedia():
     assert len(wikilinks) > 0
     print(f"Found {len(wikilinks)} language links.")
 
+    image = Wikipedia.get_pil_image(Wikipedia.get_lead_image_url("Halley's Comet"), size=(400, 400))
+    print(f"Downloaded lead image with size {image.size}.")
+
 if __name__ == "__main__":
     test_wikipedia()

@@ -1,14 +1,14 @@
 import coolpy.coding as coding
-from typing import Generic, Callable, Union, TypeVar
+from typing import Any, Generic, Callable, Union, TypeVar
 import json
 
 T = TypeVar('T')
 
-def dumps(obj: any, **kwargs):
+def dumps(obj: Any, **kwargs):
     return json.dumps(coding.encode(obj), **kwargs)
 
 
-def dump(obj: any, fp, **kwargs):
+def dump(obj: Any, fp, **kwargs):
     json.dump(coding.encode(obj), fp, **kwargs)
 
 
