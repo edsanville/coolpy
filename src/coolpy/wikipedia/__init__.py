@@ -148,7 +148,7 @@ class Wikipedia:
 
 
     @staticmethod
-    def get_lead_image_url(title: str) -> str:
+    def get_lead_image_url(title: str) -> str | None:
         """Get the lead image URL for a given page title.
 
         Args:
@@ -165,7 +165,12 @@ class Wikipedia:
         }
 
         response = Wikipedia.query(params)
-        url: str = response["query"]["pages"].popitem()[1]["original"]["source"]
+        pages = response["query"]["pages"].popitem()[1]
+
+        if "original" not in pages:
+            return None
+
+        url: str = pages["original"]["source"]
         return url        
 
 
@@ -193,12 +198,16 @@ class Wikipedia:
     
 
     @staticmethod
-    def get_lead_image_pil(title: str, size: tuple[int, int] | None=None) -> Image:
+    def get_lead_image_pil(title: str, size: tuple[int, int] | None=None) -> Image | None:
         """Get the lead image for a given page title.
 
         Args:
             title (str): The title of the page.
         """
         image_url = Wikipedia.get_lead_image_url(title)
+
+        if image_url is None:
+            return None
+        
         image = Wikipedia.get_pil_image(image_url, size)
         return image
