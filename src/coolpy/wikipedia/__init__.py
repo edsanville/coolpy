@@ -4,6 +4,7 @@ import logging
 import PIL.Image
 from PIL.Image import Image
 
+logging.basicConfig()
 l = logging.getLogger(__name__)
 
 class Wikipedia:
@@ -183,7 +184,9 @@ class Wikipedia:
             size (tuple[int, int] | None): The desired size of the image. If None, the original size is returned.
         """
         from io import BytesIO
-
+        PIL.Image.MAX_IMAGE_PIXELS = 500_000_000
+        
+        l.debug(f"Fetching image from URL: {image_url}")
         response = Wikipedia.session.get(image_url, headers=Wikipedia.HEADERS)
         response.raise_for_status()
         data: bytes = response.content
@@ -209,5 +212,9 @@ class Wikipedia:
         if image_url is None:
             return None
         
-        image = Wikipedia.get_pil_image(image_url, size)
+        try:
+            image = Wikipedia.get_pil_image(image_url, size)
+        except Exception as e:
+            l.error(f"Error getting image from {image_url}: {e}")
+            raise e
         return image
