@@ -3,8 +3,10 @@ from .cached_function import *
 import logging
 import requests
 from requests import Session
+from coolpy.tui import color_text
 
 log = logging.getLogger(__name__)
+log.debug(f'Initialized CachedRequests logger {__name__}')
 
 session = requests.Session()
 
@@ -25,6 +27,8 @@ class CachedRequests:
 
     def request(self, *args, **kwargs):
         is_hit = self.is_cache_hit(*args, **kwargs)
+        log.debug(f'Request args: {args}, kwargs: {kwargs}')
+        log.debug(color_text(f'Cache hit: {is_hit}', 'green' if is_hit else 'yellow'))
         response = self.cached_request(*args, **kwargs)
 
         if not is_hit:

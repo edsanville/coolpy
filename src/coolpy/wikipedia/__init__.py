@@ -4,6 +4,7 @@ import logging
 import PIL.Image
 from PIL.Image import Image
 
+logging.basicConfig()
 l = logging.getLogger(__name__)
 
 class Wikipedia:
