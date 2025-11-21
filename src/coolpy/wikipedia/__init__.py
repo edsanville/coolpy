@@ -167,11 +167,12 @@ class Wikipedia:
 
         response = self.query(params)
         pages = response["query"]["pages"].popitem()[1]
+        piprop = params['piprop']
 
-        if "original" not in pages:
+        if piprop not in pages:
             return None
 
-        url: str = pages["original"]["source"]
+        url: str = pages[piprop]["source"]
         return url        
 
 
