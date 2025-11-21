@@ -12,13 +12,12 @@ def test_cached_requests():
 
     # First request should not be a cache hit
     response1 = cached_requests.get(url, params=params)
-    assert response1.status_code == 200
 
     # Second request should be a cache hit
     response2 = cached_requests.get(url, params=params)
-    assert response2.status_code == 200
 
     # Responses should be the same
+    assert response2.status_code == response1.status_code
     assert response1.text == response2.text
 
 

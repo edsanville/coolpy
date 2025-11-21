@@ -25,6 +25,7 @@ def cached_function(func: F, name: str | None=None, days=28.0) -> F:
     cache.execute('create index if not exists cache_kwargs on cache(kwargs)')
 
     cache.execute('delete from cache where timestamp < ?', (datetime.datetime.now().timestamp() - seconds, ))
+    cache.commit()
 
     cache.close()
 

@@ -13,10 +13,12 @@ class Wikipedia:
     HEADERS = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
     }
-    session = CachedRequests(expiration_days=30, throttle_seconds=0.05)
+    session: CachedRequests = None
 
-    @staticmethod
-    def query(params: dict) -> dict:
+    def __init__(self, expiration_days: int = 30, throttle_seconds: float = 0.05):
+        self.session = CachedRequests(expiration_days=expiration_days, throttle_seconds=throttle_seconds)
+
+    def query(self, params: dict) -> dict:
         """Query wikipedia.
 
         Args:
@@ -28,12 +30,11 @@ class Wikipedia:
         """
         sorted_params = dict(sorted(params.items()))
         sorted_headers = dict(sorted(Wikipedia.HEADERS.items()))
-        response = Wikipedia.session.get(Wikipedia.API_URL, params=sorted_params, headers=sorted_headers)
+        response = self.session.get(Wikipedia.API_URL, params=sorted_params, headers=sorted_headers)
         response.raise_for_status()
         return response.json()
 
-    @staticmethod
-    def query_list(eititle: str, einamespace: int) -> list[dict]:
+    def query_list(self, eititle: str, einamespace: int=0) -> list[dict]:
         """Query the embeddedin list for a given title and namespace.
 
         Args:
@@ -54,7 +55,7 @@ class Wikipedia:
 
         items: list[dict] = []
         while True:
-            response = Wikipedia.query(params)
+            response = self.query(params)
             items.extend(response.get("query", {}).get("embeddedin", []))
 
             if "continue" not in response:
@@ -63,9 +64,8 @@ class Wikipedia:
             params.update(response["continue"])
 
         return items
-    
-    @staticmethod
-    def get_language_links(title: str, language_isos: set[str] | None=None) -> dict[str, str]:
+
+    def get_language_links(self, title: str, language_isos: set[str] | None=None) -> dict[str, str]:
         """Get the language links for a given page title.
 
         Args:
@@ -87,25 +87,27 @@ class Wikipedia:
         wikilinks: dict[str, str] = {
             'en': f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
         }
-        while True:
-            response = Wikipedia.query(params)
-            langlinks = response["query"]["pages"].popitem()[1].get("langlinks", [])
 
-            for link in langlinks:
-                if language_isos is not None and link['lang'] not in language_isos:
-                    continue
-                wikilinks[link["lang"]] = link["url"]
+        while True:
+            response = self.query(params)
+
+            for page in response["query"]["pages"].values():
+                langlinks = page.get("langlinks", [])
+                # l.error(color_text(str(langlinks), 'red'))
+                for link in langlinks:
+                    if language_isos is not None and link['lang'] not in language_isos:
+                        continue
+                    wikilinks[link["lang"]] = link["url"]
 
             if "continue" not in response:
                 break
 
-            params.update(response["continue"])
+            params['llcontinue'] = response["continue"]["llcontinue"]
 
         return wikilinks
+    
 
-
-    @staticmethod
-    def get_language_links_titles(title: str, language_isos: set[str] | None=None) -> dict[str, str]:
+    def get_language_links_titles(self, title: str, language_isos: set[str] | None=None) -> dict[str, str]:
         """Get the language links for a given page title.
 
         Args:
@@ -115,7 +117,7 @@ class Wikipedia:
             dict[str, str]: A dictionary mapping language codes to their corresponding titles.
         """
 
-        wikilink_urls = Wikipedia.get_language_links(title, language_isos)
+        wikilink_urls = self.get_language_links(title, language_isos)
         titles: dict[str, str] = {}
         for lang, url in wikilink_urls.items():
             components = url.split("wiki/")
@@ -125,8 +127,7 @@ class Wikipedia:
         return titles
 
 
-    @staticmethod
-    def get_wikicode(title: str) -> str:
+    def get_wikicode(self, title: str) -> str:
         """Get the wikicode for a given page title.
 
         Args:
@@ -141,14 +142,13 @@ class Wikipedia:
             "titles": title,
         }
 
-        response = Wikipedia.query(params)
+        response = self.query(params)
         page = response["query"]["pages"].popitem()[1]
         content: str = page["revisions"][0]["*"]
         return content
 
 
-    @staticmethod
-    def get_lead_image_url(title: str) -> str | None:
+    def get_lead_image_url(self, title: str) -> str | None:
         """Get the lead image URL for a given page title.
 
         Args:
@@ -157,14 +157,14 @@ class Wikipedia:
         params = {
             "action": "query",
             "prop": "pageimages",
-            "piprop": "original",
+            "piprop": "thumbnail",
             "format": "json",
             "titles": title,
 
             "pithumbsize": 500
         }
 
-        response = Wikipedia.query(params)
+        response = self.query(params)
         pages = response["query"]["pages"].popitem()[1]
 
         if "original" not in pages:
@@ -174,8 +174,7 @@ class Wikipedia:
         return url        
 
 
-    @staticmethod
-    def get_pil_image(image_url: str, size: tuple[int, int] | None=None) -> Image:
+    def get_pil_image(self, image_url: str, size: tuple[int, int] | None=None) -> Image:
         """Get the image data for a given image title.
 
         Args:
@@ -183,11 +182,14 @@ class Wikipedia:
             size (tuple[int, int] | None): The desired size of the image. If None, the original size is returned.
         """
         from io import BytesIO
-
-        response = Wikipedia.session.get(image_url, headers=Wikipedia.HEADERS)
+        PIL.Image.MAX_IMAGE_PIXELS = 500_000_000
+        
+        l.debug(f"Fetching image from URL: {image_url}")
+        response = self.session.get(image_url, headers=self.HEADERS)
         response.raise_for_status()
         data: bytes = response.content
         image: Image = PIL.Image.open(BytesIO(data)).convert('RGB')
+            
 
         if size is not None:
             ratio = max(size[0] / image.size[0], size[1] / image.size[1])
@@ -197,17 +199,21 @@ class Wikipedia:
         return image
     
 
-    @staticmethod
-    def get_lead_image_pil(title: str, size: tuple[int, int] | None=None) -> Image | None:
+    def get_lead_image_pil(self, title: str, size: tuple[int, int] | None=None) -> Image | None:
         """Get the lead image for a given page title.
 
         Args:
             title (str): The title of the page.
         """
-        image_url = Wikipedia.get_lead_image_url(title)
+        image_url = self.get_lead_image_url(title)
 
         if image_url is None:
             return None
         
-        image = Wikipedia.get_pil_image(image_url, size)
+        try:
+            image = self.get_pil_image(image_url, size)
+        except Exception as e:
+            l.info(f"Error getting image from {image_url}: {e}")
+            return None
+        
         return image
