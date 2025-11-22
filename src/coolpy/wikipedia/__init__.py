@@ -79,39 +79,45 @@ class Wikipedia:
 
         if isinstance(title, str):
             titles = [title]
-
-        params = {
-            "action": "query",
-            "prop": "langlinks",
-            "lllimit": "max",
-            "llprop": "url",
-            "format": "json",
-            "titles": '|'.join(titles),
-        }
+        else:
+            titles = title
 
         results: dict[str, dict[str, str]] = {}
 
-        while True:
-            response = self.query(params)
+        for start_index in range(0, len(titles), 50):
+            batch = titles[start_index:start_index + 50]
 
-            for page in response["query"]["pages"].values():
+            params = {
+                "action": "query",
+                "prop": "langlinks",
+                "lllimit": "max",
+                "llprop": "url",
+                "format": "json",
+                "titles": '|'.join(batch),
+            }
 
-                wikilinks = results.setdefault(page['title'], {
-                    'en': f"https://en.wikipedia.org/wiki/{page['title'].replace(' ', '_')}"
-                })
 
-                langlinks = page.get("langlinks", [])
-                # l.error(color_text(str(langlinks), 'red'))
-                for link in langlinks:
-                    if language_isos is not None and link['lang'] not in language_isos:
-                        continue
-                    wikilinks[link["lang"]] = link["url"]
+            while True:
+                response = self.query(params)
 
-            if "continue" not in response:
-                break
+                for page in response["query"]["pages"].values():
 
-            params['llcontinue'] = response["continue"]["llcontinue"]
+                    wikilinks = results.setdefault(page['title'], {
+                        'en': f"https://en.wikipedia.org/wiki/{page['title'].replace(' ', '_')}"
+                    })
 
+                    langlinks = page.get("langlinks", [])
+                    # l.error(color_text(str(langlinks), 'red'))
+                    for link in langlinks:
+                        if language_isos is not None and link['lang'] not in language_isos:
+                            continue
+                        wikilinks[link["lang"]] = link["url"]
+
+                if "continue" not in response:
+                    break
+
+                params['llcontinue'] = response["continue"]["llcontinue"]
+            
         if isinstance(title, str):
             return results[title]
         else:
