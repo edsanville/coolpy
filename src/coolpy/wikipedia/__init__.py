@@ -66,33 +66,40 @@ class Wikipedia:
 
         return items
 
-    def get_language_links(self, title: str, language_isos: set[str] | None=None) -> dict[str, str]:
+    def get_language_links(self, title: str | list[str], language_isos: set[str] | None=None) -> dict[str, str] | dict[str, dict[str, str]]:
         """Get the language links for a given page title.
 
         Args:
-            title (str): The title of the page.
+            title (str | list[str]): The title(s) of the page(s).
             language_isos (set[str] | None): A set of language ISO codes to filter the results. If None, all languages are returned.
 
         Returns:
-            dict[str, str]: A dictionary mapping language codes to their corresponding titles.
+            dict[str, dict[str, str]]] | dict[str, str]: A dictionary mapping `results[title][lang]` or `results[lang]` to their corresponding URLs, depending on whether a single title or a list of titles was provided.
         """
+
+        if isinstance(title, str):
+            titles = [title]
+
         params = {
             "action": "query",
             "prop": "langlinks",
             "lllimit": "max",
             "llprop": "url",
             "format": "json",
-            "titles": title,
+            "titles": '|'.join(titles),
         }
 
-        wikilinks: dict[str, str] = {
-            'en': f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
-        }
+        results: dict[str, dict[str, str]] = {}
 
         while True:
             response = self.query(params)
 
             for page in response["query"]["pages"].values():
+
+                wikilinks = results.setdefault(page['title'], {
+                    'en': f"https://en.wikipedia.org/wiki/{page['title'].replace(' ', '_')}"
+                })
+
                 langlinks = page.get("langlinks", [])
                 # l.error(color_text(str(langlinks), 'red'))
                 for link in langlinks:
@@ -105,7 +112,10 @@ class Wikipedia:
 
             params['llcontinue'] = response["continue"]["llcontinue"]
 
-        return wikilinks
+        if isinstance(title, str):
+            return results[title]
+        else:
+            return results
     
 
     def get_language_links_titles(self, title: str, language_isos: set[str] | None=None) -> dict[str, str]:
