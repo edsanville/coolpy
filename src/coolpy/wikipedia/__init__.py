@@ -280,3 +280,10 @@ class Wikipedia:
             return None
         
         return image
+
+    @staticmethod
+    def remove_parentheses(title: str) -> str:
+        if title.endswith(')'):
+            return title[:title.rfind(' (')]
+        return title
+
