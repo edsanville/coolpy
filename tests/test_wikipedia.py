@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from pprint import pprint
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 from coolpy.wikipedia import Wikipedia
@@ -9,7 +9,7 @@ from coolpy.wikipedia import Wikipedia
 
 def test_wikipedia():
     wiki = Wikipedia()
-    items = wiki.query_list("Template:Starbox_begin", 0)
+    items = wiki.get_embeddedin("Template:Starbox_begin")
     assert len(items) > 0
     print(f"Found {len(items)} items.")
 
@@ -40,6 +40,17 @@ def test_wikipedia():
 
     image = wiki.get_lead_image_pil("Halley's Comet", size=(400, 400))
     print(f"Downloaded lead image with size {image.size}.")
+
+    potential_moons_of_saturn = wiki.get_category_members("Moons of Saturn") + wiki.get_embeddedin('Template:Moons_of_Saturn')
+    assert len(potential_moons_of_saturn) > 0
+    print(f"Found {len(potential_moons_of_saturn)} category members.")
+
+    planet_articles = wiki.get_embeddedin('Template:Infobox planet')
+    assert len(planet_articles) > 0
+    print(f"Found {len(planet_articles)} planet articles.")
+
+    saturn_moon_titles = {item['title'] for item in potential_moons_of_saturn}.intersection({item['title'] for item in planet_articles})
+    print(f"Found {len(saturn_moon_titles)} Saturn moons that are also planet articles.")
 
 if __name__ == "__main__":
     test_wikipedia()

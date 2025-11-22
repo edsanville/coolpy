@@ -36,8 +36,29 @@ class Wikipedia:
         response = self.session.get(Wikipedia.API_URL, params=sorted_params, headers=sorted_headers)
         response.raise_for_status()
         return response.json()
+    
 
-    def query_list(self, eititle: str, einamespace: int=0) -> list[dict]:
+    def query_all(self, params: dict, collect_key: str) -> list[dict]:
+        """Query wikipedia and return all results.
+
+        Args:
+            params (dict): The parameters for the Wikipedia API.
+            collect_key (str): The key in the response to collect results from.
+        """
+        items: list[dict] = []
+        while True:
+            response = self.query(params)
+            items.extend(response.get("query", {}).get(collect_key, []))
+
+            if "continue" not in response:
+                break
+
+            params.update(response["continue"])
+
+        return items
+
+
+    def get_embeddedin(self, eititle: str, einamespace: int=0) -> list[dict]:
         """Query the embeddedin list for a given title and namespace.
 
         Args:
@@ -56,17 +77,28 @@ class Wikipedia:
             "einamespace": einamespace
         }
 
-        items: list[dict] = []
-        while True:
-            response = self.query(params)
-            items.extend(response.get("query", {}).get("embeddedin", []))
+        return self.query_all(params, "embeddedin")
 
-            if "continue" not in response:
-                break
 
-            params.update(response["continue"])
+    def get_category_members(self, category: str) -> list[dict]:
+        """Get the members of a given category.
 
-        return items
+        Args:
+            category (str): The name of the category.
+
+        Returns:
+            list[dict]: A list of pages that are members of the specified category.
+        """
+        params = {
+            "action": "query",
+            "list": "categorymembers",
+            "cmtitle": f"Category:{category}",
+            "format": "json",
+            "cmlimit": 500,
+        }
+
+        return self.query_all(params, "categorymembers")
+
 
     def get_language_links(self, title: str | list[str], language_isos: set[str] | None=None) -> dict[str, str] | dict[str, dict[str, str]]:
         """Get the language links for a given page title.
