@@ -17,12 +17,17 @@ def test_wikipedia():
     assert len(wikilinks_dict) > 1
     pprint(wikilinks_dict)
 
-    results = wiki.get_language_links([item['title'] for item in items[:200]], language_isos={'en', 'fr', 'de', 'es', 'it', 'ja', 'zh'})
+    starbox_article_titles = [item['title'] for item in items[:200]]
+    results = wiki.get_language_links(starbox_article_titles, language_isos={'en', 'fr', 'de', 'es', 'it', 'ja', 'zh'})
     # assert len(results) == 2
     # assert 'New Hampshire' in results
     # assert 'Python (programming language)' in results
     # assert len(results['New Hampshire']) > 1
     # assert len(results['Python (programming language)']) > 1
+    pprint(results)
+
+    results = wiki.get_language_links_titles(starbox_article_titles, language_isos={'en', 'fr', 'de', 'es', 'it', 'ja', 'zh'})
+    assert len(results) == len(starbox_article_titles)
     pprint(results)
 
     wikilinks = wiki.get_language_links_titles("Python (programming language)", language_isos={'en', 'fr', 'de', 'es', 'it', 'ja', 'zh'})

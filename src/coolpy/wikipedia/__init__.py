@@ -124,24 +124,35 @@ class Wikipedia:
             return results
     
 
-    def get_language_links_titles(self, title: str, language_isos: set[str] | None=None) -> dict[str, str]:
+    def get_language_links_titles(self, title: str | list[str], language_isos: set[str] | None=None) -> dict[str, str]:
         """Get the language links for a given page title.
 
         Args:
-            title (str): The title of the page.
+            title (str | list[str]): The title(s) of the page(s).
 
         Returns:
-            dict[str, str]: A dictionary mapping language codes to their corresponding titles.
+            dict[str, str] | dict[str, dict[str, str]]: Either `results[title][lang]` or `results[lang]` depending on whether a single title or a list of titles was provided.
         """
 
-        wikilink_urls = self.get_language_links(title, language_isos)
-        titles: dict[str, str] = {}
-        for lang, url in wikilink_urls.items():
-            components = url.split("wiki/")
-            assert len(components) == 2, f"Unexpected URL format: {url}"
-            titles[lang] = components[1]
+        if isinstance(title, str):
+            titles = [title]
+        else:
+            titles = title
 
-        return titles
+        wikilink_urls = self.get_language_links(titles, language_isos)
+
+        def title_from_url(title: str) -> str:
+            components = title.split("wiki/")
+            assert len(components) == 2, f"Unexpected URL format: {title}"
+            return components[1]
+
+
+        results = {title: {lang: title_from_url(url) for lang, url in wikilinks.items()} for title, wikilinks in wikilink_urls.items()}
+
+        if isinstance(title, str):
+            return results[title]
+        else:
+            return results
 
 
     def get_wikicode(self, title: str) -> str:
