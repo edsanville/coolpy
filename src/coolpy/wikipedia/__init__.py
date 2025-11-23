@@ -3,6 +3,7 @@ import json
 import logging
 import PIL.Image
 from PIL.Image import Image
+from typing import overload
 
 logging.basicConfig()
 l = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ class Wikipedia:
     HEADERS = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
     }
-    session: CachedRequests = None
+    session: CachedRequests
 
     def __init__(self, expiration_days: int = 30, throttle_seconds: float = 0.05):
         self.session = CachedRequests(expiration_days=expiration_days, throttle_seconds=throttle_seconds)
@@ -99,6 +100,11 @@ class Wikipedia:
 
         return self.query_all(params, "categorymembers")
 
+    @overload
+    def get_language_links(self, title: str, language_isos: set[str] | None=None) -> dict[str, str]: ...
+    
+    @overload
+    def get_language_links(self, title: list[str], language_isos: set[str] | None=None) -> dict[str, dict[str, str]]: ...
 
     def get_language_links(self, title: str | list[str], language_isos: set[str] | None=None) -> dict[str, str] | dict[str, dict[str, str]]:
         """Get the language links for a given page title.
@@ -157,8 +163,13 @@ class Wikipedia:
         else:
             return results
     
+    @overload
+    def get_language_links_titles(self, title: str, language_isos: set[str] | None=None) -> dict[str, str]: ...
 
-    def get_language_links_titles(self, title: str | list[str], language_isos: set[str] | None=None) -> dict[str, str]:
+    @overload
+    def get_language_links_titles(self, title: list[str], language_isos: set[str] | None=None) -> dict[str, dict[str, str]]: ...
+
+    def get_language_links_titles(self, title: str | list[str], language_isos: set[str] | None=None) -> dict[str, str] | dict[str, dict[str, str]]:
         """Get the language links for a given page title.
 
         Args:
@@ -173,7 +184,7 @@ class Wikipedia:
         else:
             titles = title
 
-        wikilink_urls = self.get_language_links(titles, language_isos)
+        wikilink_urls: dict[str, dict[str, str]] = self.get_language_links(titles, language_isos)
 
         def title_from_url(title: str) -> str:
             components = title.split("wiki/")

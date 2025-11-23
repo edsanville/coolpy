@@ -23,9 +23,11 @@ def load(fp, Class: Callable[[], T], **kwargs) -> T:
 class JSONFile(Generic[T]):
     filename: str
     contents: T
+    minify: bool = False
 
-    def __init__(self, filename: str, Class: Callable[[], T]):
+    def __init__(self, filename: str, Class: Callable[[], T], minify: bool = False):
         self.filename = filename
+        self.minify = minify
         
         try:
             self.contents = load(open(filename, 'r'), Class)
@@ -33,4 +35,7 @@ class JSONFile(Generic[T]):
             self.contents = Class()
 
     def save(self):
-        dump(self.contents, open(self.filename, 'w'))
+        if self.minify:
+            dump(self.contents, open(self.filename, 'w'), separators=(',', ':'))
+        else:
+            dump(self.contents, open(self.filename, 'w'), indent=4, sort_keys=True)

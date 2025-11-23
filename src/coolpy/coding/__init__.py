@@ -1,4 +1,5 @@
 from typing import Any, Callable, TypeVar, get_type_hints, get_origin, get_args, Literal
+import types
 
 normal_types = set([int, float, str, bool, type(None)])
 
@@ -26,13 +27,21 @@ def encode(obj: any):
 def decode(obj: any, Class: Callable[[], T]) -> T:
     if Class is None or Class is Any or obj is None:
         return obj
+    
+    if isinstance(Class, types.UnionType):
+        for type_option in get_args(Class):
+            try:
+                return decode(obj, type_option)
+            except:
+                pass
+        raise Exception(f"Cannot denormalize '{obj}' to any type in Union '{Class}'")
 
     t = type(obj)
 
     if Class == t:
         return obj
     
-    # We can convert integers to floats without los of data
+    # We can convert integers to floats without loss of data
     if Class == float and t == int:
         return float(obj)
 
@@ -83,7 +92,7 @@ def decode(obj: any, Class: Callable[[], T]) -> T:
 
     # python objects
     if t != dict:
-        raise Exception(f"Need a dict when denormalizing to class '{Class}', got '{t}': {obj}")
+        raise Exception(f"Need a dict when denormalizing to class '{repr(Class)}', got '{t}': {obj}")
     
     kwargs = {}
     for var_name, type_hint in get_type_hints(Class).items():
