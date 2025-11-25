@@ -4,8 +4,6 @@ import logging
 import PIL.Image
 from PIL.Image import Image
 from typing import overload
-import mwparserfromhell
-import mwparserfromhell.wikicode
 from .Wikicode import Wikicode, Template
 
 logging.basicConfig()
@@ -221,7 +219,7 @@ class Wikipedia:
         response = self.query(params)
         page = response["query"]["pages"].popitem()[1]
         content: str = page["revisions"][0]["*"]
-        return Wikicode(text=content)
+        return Wikicode.parse(content)
 
 
     def get_lead_image_url(self, title: str) -> str | None:

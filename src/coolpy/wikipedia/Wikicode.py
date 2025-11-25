@@ -1,51 +1,45 @@
 import mwparserfromhell
-from mwparserfromhell.wikicode import Wikicode as _Wikicode
-from mwparserfromhell.nodes import Node as _Node
+from copy import deepcopy, copy
 
 
-class Template:
-    _template: mwparserfromhell.nodes.Template
-
+class Template(mwparserfromhell.nodes.Template):
     def __init__(self, template: mwparserfromhell.nodes.Template):
-        self._template = template
+        super().__init__(template.name)
+        self.params.extend(deepcopy(template.params))
 
-    def __repr__(self) -> str:
-        return repr(self._template)
-    
-    def __str__(self) -> str:
-        return str(self._template)
-    
-    def get_item(self, *names: str, path_so_far: str='') -> "Wikicode | Template":
-        """Drill down into a Template object following a path of node types.
+
+    def get_parameter(self, name: str) -> "Wikicode":
+        """Get a parameter by name.
 
         Args:
-            names (str): The name of the item(s) to find.
+            name (str): The name of the parameter.
+
+        Returns:
+            Wikicode: The parameter's value as a Wikicode object.
+
+        Raises:
+            ValueError: If no parameter with the given name exists.
         """
-
-        if len(names) == 0:
-            return self
-        
-        param_name = names[0].strip()
-        try:
-            param = self._template.get(param_name)
-        except ValueError:
-            raise KeyError(f"Path '{path_so_far}{param_name}' does not exist.")
-        
-        return Wikicode(param.value).get_item(*names[1:], path_so_far=f"{path_so_far}{param_name}.")
+        return Wikicode(self.get(name).value)
 
 
-class Wikicode:
-    _wikicode: _Wikicode
+class Wikicode(mwparserfromhell.wikicode.Wikicode):
+    def __init__(self, wikicode: mwparserfromhell.wikicode.Wikicode):
+        self.nodes = deepcopy(wikicode.nodes)
 
-    def __init__(self, wikicode: _Wikicode | None=None, text: str | None=None):
-        if wikicode is not None:
-            self._wikicode = wikicode
-        elif text is not None:
-            self._wikicode = mwparserfromhell.parse(text)
-        else:
-            raise ValueError("Either wikicode or text must be provided")
+    @staticmethod
+    def parse(text: str) -> "Wikicode":
+        """Parse a string into a Wikicode object.
 
-    def get_templates(self, name: str) -> list[Template]:
+        Args:
+            text (str): The text to parse.
+
+        Returns:
+            Wikicode: The parsed Wikicode object.
+        """
+        return Wikicode(mwparserfromhell.parse(text))
+
+    def get_templates(self, name: str, recursive=False) -> list[Template]:
         """Get all templates with a given case-insensitive name.
 
         Args:
@@ -54,27 +48,22 @@ class Wikicode:
         Returns:
             list[mwparserfromhell.nodes.Template]: A list of templates, (can be empty).
         """
-        return [Template(t) for t in self._wikicode.filter_templates(recursive=False, matches=lambda myname: myname.name.strip().lower() == name.lower())]
+        return [Template(t) for t in self.filter_templates(recursive=recursive, matches=lambda myname: myname.name.strip().lower() == name.lower())]
 
 
-    def get_item(self, *names: str, path_so_far: str='') -> "Wikicode | Template":
-        """Drill down into a Wikicode object following a path of node types.
+    def get_template(self, name: str, recursive=False) -> Template:
+        """Get the first template with a given case-insensitive name.
 
         Args:
-            names (str): The name of the item(s) to find.
+            name (str): Template name (case-insensitive).
+
+        Returns:
+            mwparserfromhell.nodes.Template: The template.
+
+        Raises:
+            KeyError: If no template with the given name exists.
         """
-
-        if len(names) == 0:
-            return self
-        
-        template_name = names[0]
-        templates = self.get_templates(template_name)
+        templates = self.get_templates(name, recursive=recursive)
         if len(templates) == 0:
-            raise KeyError(f"Path '{path_so_far}{template_name} does not exist.")
-        return templates[0].get_item(*names[1:], path_so_far=f"{path_so_far}{template_name}.")
-
-    def __repr__(self) -> str:
-        return repr(self._wikicode)
-    
-    def __str__(self) -> str:
-        return str(self._wikicode)
+            raise KeyError(f"Template '{name}' does not exist.")
+        return templates[0]
