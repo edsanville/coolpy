@@ -52,5 +52,9 @@ def test_wikipedia():
     saturn_moon_titles = {item['title'] for item in potential_moons_of_saturn}.intersection({item['title'] for item in planet_articles})
     print(f"Found {len(saturn_moon_titles)} Saturn moons that are also planet articles.")
 
+    wikicode = wiki.get_wikicode("Halley's Comet")
+    val = wikicode.get_item('Infobox comet', 'dimensions')
+    print(val)
+
 if __name__ == "__main__":
     test_wikipedia()

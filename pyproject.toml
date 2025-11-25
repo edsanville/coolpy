@@ -17,6 +17,7 @@ authors = [
 # Runtime dependencies
 dependencies = [
     'requests>=2.25.1',
+    'mwparserfromhell>=0.6.3',
 ]
 
 [project.urls]
