@@ -15,12 +15,12 @@ class Template(mwparserfromhell.nodes.Template):
             name (str): The name of the parameter.
 
         Returns:
-            Wikicode: The parameter's value as a Wikicode object.
-
-        Raises:
-            ValueError: If no parameter with the given name exists.
+            Wikicode: The parameter's value as a Wikicode object, or None if the parameter does not exist.
         """
-        return Wikicode(self.get(name).value)
+        try:
+            return Wikicode(self.get(name).value)
+        except ValueError:
+            return None
 
 
 class Wikicode(mwparserfromhell.wikicode.Wikicode):
@@ -58,12 +58,22 @@ class Wikicode(mwparserfromhell.wikicode.Wikicode):
             name (str): Template name (case-insensitive).
 
         Returns:
-            mwparserfromhell.nodes.Template: The template.
-
-        Raises:
-            KeyError: If no template with the given name exists.
+            Template: The template, or None if it does not exist.
         """
         templates = self.get_templates(name, recursive=recursive)
         if len(templates) == 0:
-            raise KeyError(f"Template '{name}' does not exist.")
+            return None
         return templates[0]
+
+
+    def get_text(self) -> str:
+        """Get the text representation of the Wikicode.
+
+        Returns:
+            str: The text representation, replacing <br> tags with newlines and removing other markup.
+        """
+        # Replace all <br> / <br /> tags with newlines
+        for tag in self.ifilter_tags(matches=lambda n: n.tag.lower() == "br"):
+            self.replace(tag, "\n")
+        return self.strip_code()
+
