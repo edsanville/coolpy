@@ -1,3 +1,4 @@
+from urllib.parse import unquote_plus
 from coolpy.caching import CachedRequests
 import json
 import logging
@@ -190,7 +191,7 @@ class Wikipedia:
         def title_from_url(title: str) -> str:
             components = title.split("wiki/")
             assert len(components) == 2, f"Unexpected URL format: {title}"
-            return components[1]
+            return unquote_plus(components[1])
 
 
         results = {title: {lang: title_from_url(url) for lang, url in wikilinks.items()} for title, wikilinks in wikilink_urls.items()}
