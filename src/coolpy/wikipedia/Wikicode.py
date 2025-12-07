@@ -37,7 +37,7 @@ class Wikicode(mwparserfromhell.wikicode.Wikicode):
         Returns:
             Wikicode: The parsed Wikicode object.
         """
-        return Wikicode(mwparserfromhell.parse(text))
+        return Wikicode(mwparserfromhell.parse(text, skip_style_tags=True))
 
     def get_templates(self, name: str, recursive=False) -> list[Template]:
         """Get all templates with a given case-insensitive name.
