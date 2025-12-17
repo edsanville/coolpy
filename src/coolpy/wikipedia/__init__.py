@@ -10,6 +10,8 @@ from .Wikicode import Wikicode, Template
 logging.basicConfig()
 l = logging.getLogger(__name__)
 
+BATCH_SIZE = 15
+
 class Wikipedia:
     """A simple Wikipedia API wrapper."""
 
@@ -38,10 +40,12 @@ class Wikipedia:
         l.debug(f'Querying {Wikipedia.API_URL} with params: {sorted_params} and headers: {sorted_headers}')
         response = self.session.get(Wikipedia.API_URL, params=sorted_params, headers=sorted_headers)
         response.raise_for_status()
-        return response.json()
+        results = response.json()
+        l.debug(f'Response: {results}...')
+        return results
     
 
-    def query_all(self, params: dict, collect_key: str) -> list[dict]:
+    def query_all(self, params: dict, collect_key: str, batch_key: str | None = None) -> list[dict]:
         """Query wikipedia and return all results.
 
         Args:
@@ -49,9 +53,25 @@ class Wikipedia:
             collect_key (str): The key in the response to collect results from.
         """
         items: list[dict] = []
+
+        if batch_key is not None:
+            # Batch the params entry, and recursively call this function
+            original_value = params[batch_key]
+            for start_index in range(0, len(original_value), BATCH_SIZE):
+                batch = original_value[start_index:start_index + BATCH_SIZE]
+                params[batch_key] = '|'.join(batch)
+                results = self.query_all(params, collect_key)
+                items.extend(results)
+            return items
+
         while True:
             response = self.query(params)
-            items.extend(response.get("query", {}).get(collect_key, []))
+            results = response.get("query", {})[collect_key]
+
+            if type(results) is dict:
+                items.extend(results.values())
+            else:
+                items.extend(results)
 
             if "continue" not in response:
                 break
@@ -81,6 +101,26 @@ class Wikipedia:
         }
 
         return self.query_all(params, "embeddedin")
+
+
+    def get_redirects(self, titles: list[str]) -> list[dict]:
+        """Get the redirects for a given list of titles.
+
+        Args:
+            titles (list[str]): The titles to query.
+        Returns:
+            list[dict]: A list of redirects for the specified titles.
+        """
+
+        params = {
+                "action": "query",
+                "prop": "redirects",
+                "format": "json",
+                "rdlimit": "max",
+                "titles": titles,
+        }
+
+        return self.query_all(params, "pages", batch_key="titles")
 
 
     def get_category_members(self, category: str) -> list[dict]:
@@ -126,8 +166,8 @@ class Wikipedia:
 
         results: dict[str, dict[str, str]] = {}
 
-        for start_index in range(0, len(titles), 50):
-            batch = titles[start_index:start_index + 50]
+        for start_index in range(0, len(titles), BATCH_SIZE):
+            batch = titles[start_index:start_index + BATCH_SIZE]
 
             params = {
                 "action": "query",
