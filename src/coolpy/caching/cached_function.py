@@ -4,6 +4,7 @@ import os
 import pickle
 import datetime
 import logging
+from pathlib import Path
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -18,7 +19,9 @@ def cached_function(func: F, name: str | None=None, days=28.0) -> F:
 
     seconds = int(days * 24 * 60 * 60)
 
-    cache = sqlite3.Connection(os.path.expanduser(f'~/.cache/{name}-cache.sqlite'))
+    db_path = os.path.expanduser(f'~/.cache/{name}-cache.sqlite')
+
+    cache = sqlite3.connect(db_path)
     cache.execute('create table if not exists cache (args blob, kwargs blob, return_value blob, timestamp integer, unique(args, kwargs))')
     cache.execute('create index if not exists cache_args on cache(args)')
     cache.execute('create index if not exists cache_timestamp on cache(timestamp)')
@@ -27,13 +30,11 @@ def cached_function(func: F, name: str | None=None, days=28.0) -> F:
     cache.execute('delete from cache where timestamp < ?', (datetime.datetime.now().timestamp() - seconds, ))
     cache.commit()
 
-    cache.close()
-
     def cached_func(*args, **kwargs):
         log.debug(f'Checking cache for {name} with args={args} kwargs={kwargs}')
-        cache = sqlite3.Connection(os.path.expanduser(f'~/.cache/{name}-cache.sqlite'))
 
         row = cache.execute('select return_value, timestamp from cache where args is ? and kwargs is ?', (pickle.dumps(args), pickle.dumps(kwargs))).fetchone()
+        cache.commit()
 
         now_timestamp = int(datetime.datetime.now().timestamp())
 
@@ -52,9 +53,7 @@ def cached_function(func: F, name: str | None=None, days=28.0) -> F:
         cache.execute('insert or replace into cache (args, kwargs, return_value, timestamp) values (?, ?, ?, ?)', (pickle.dumps(args), pickle.dumps(kwargs), pickle.dumps(return_value), now_timestamp))
         cache.commit()
 
-        cache.close()
-
-        return func(*args, **kwargs)
+        return return_value
 
     cached_func = cast(F, cached_func)
 
@@ -71,21 +70,21 @@ def is_cache_hit(func: F, name: str | None=None, days=28.0) -> Callable[..., boo
 
     seconds = int(days * 24 * 60 * 60)
 
-    cache = sqlite3.Connection(os.path.expanduser(f'~/.cache/{name}-cache.sqlite'))
+    db_path = os.path.expanduser(f'~/.cache/{name}-cache.sqlite')
+    cache = sqlite3.connect(db_path)
     cache.execute('create table if not exists cache (args blob, kwargs blob, return_value blob, timestamp integer, unique(args, kwargs))')
     cache.execute('create index if not exists cache_args on cache(args)')
     cache.execute('create index if not exists cache_timestamp on cache(timestamp)')
     cache.execute('create index if not exists cache_kwargs on cache(kwargs)')
 
     cache.execute('delete from cache where timestamp < ?', (datetime.datetime.now().timestamp() - seconds, ))
-
-    cache.close()
+    cache.commit()
 
     def cached_func(*args, **kwargs):
         log.debug(f'Checking cache for {name} with args={args} kwargs={kwargs}')
-        cache = sqlite3.Connection(os.path.expanduser(f'~/.cache/{name}-cache.sqlite'))
 
         row = cache.execute('select return_value, timestamp from cache where args is ? and kwargs is ?', (pickle.dumps(args), pickle.dumps(kwargs))).fetchone()
+        cache.commit()
 
         now_timestamp = int(datetime.datetime.now().timestamp())
 
