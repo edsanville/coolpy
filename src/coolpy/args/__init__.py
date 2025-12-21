@@ -19,11 +19,11 @@ class Arg:
 T = t.TypeVar('T')
 
 
-def parse_args(args: T, prog: str=os.path.basename(sys.argv[0]), description: str=None) -> T:
+def parse_args(args: type[T], prog: str=os.path.basename(sys.argv[0]), description: str=None) -> T:
     """Parse command-line arguments using a class with type hints for each argument.
 
     Args:
-        args (T): An instance of a class with a type-hinted attribute for each argument, and optional Arg metadata.
+        args (T): A class object (NOT a class instance) with a type-hinted attribute for each argument, and optional Arg metadata. 
         prog (str, optional): The name of the program. Defaults to os.path.basename(sys.argv[0]).
         description (str, optional): A brief description of the program. Defaults to None.
 
