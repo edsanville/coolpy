@@ -28,7 +28,6 @@ def test_wikipedia():
 
     results = wiki.get_language_links_titles(starbox_article_titles, language_isos={'en', 'fr', 'de', 'es', 'it', 'ja', 'zh'})
     assert len(results) == len(starbox_article_titles)
-    pprint(results)
 
     wikilinks = wiki.get_language_links_titles("Python (programming language)", language_isos={'en', 'fr', 'de', 'es', 'it', 'ja', 'zh'})
     assert len(wikilinks) == 7
@@ -53,7 +52,7 @@ def test_wikipedia():
     print(f"Found {len(saturn_moon_titles)} Saturn moons that are also planet articles.")
 
     wikicode = wiki.get_wikicode("Halley's Comet")
-    val = wikicode.get_item('Infobox comet', 'dimensions')
+    val = wikicode.get_template('Infobox comet').get('aphelion').value.strip_code()
     print(val)
 
 if __name__ == "__main__":
