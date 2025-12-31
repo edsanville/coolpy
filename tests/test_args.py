@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from coolpy.args import parse_args, Arg
 import logging
+import typing as t
 
 class Args:
     """Test for coolpy.args"""
@@ -11,7 +12,7 @@ class Args:
 
 
 def cli():
-    parsed_args = parse_args(Args())
+    parsed_args = parse_args(Args)
 
     logging.basicConfig(level=parsed_args.log_level)
     l = logging.getLogger("test_parse_args")
@@ -29,7 +30,9 @@ def test_args():
         "--log_level", "DEBUG"
     ]
 
-    args = parse_args(Args())
+    print(t.get_type_hints(Args))
+    
+    args = parse_args(Args)
 
     assert args.age == 30
     assert args.names == ["Alice", "Bob"]
@@ -40,4 +43,5 @@ def test_args():
 
 
 if __name__ == "__main__":
+    test_args()
     cli()

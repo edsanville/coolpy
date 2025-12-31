@@ -18,6 +18,7 @@ authors = [
 dependencies = [
     'requests>=2.25.1',
     'mwparserfromhell>=0.6.3',
+    'pillow>=10.2.0'
 ]
 
 [project.urls]
