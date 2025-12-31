@@ -201,7 +201,8 @@ class Wikipedia:
                 params['llcontinue'] = response["continue"]["llcontinue"]
             
         if isinstance(title, str):
-            return results[title]
+            assert(len(results) == 1)
+            return list(results.values())[0]
         else:
             return results
     
@@ -237,7 +238,8 @@ class Wikipedia:
         results = {title: {lang: title_from_url(url) for lang, url in wikilinks.items()} for title, wikilinks in wikilink_urls.items()}
 
         if isinstance(title, str):
-            return results[title]
+            assert(len(results) == 1)
+            return list(results.values())[0]
         else:
             return results
 
