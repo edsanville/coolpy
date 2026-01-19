@@ -21,7 +21,7 @@ class Wikipedia:
     }
     session: CachedRequests
 
-    def __init__(self, expiration_days: int = 30, throttle_seconds: float = 0.05):
+    def __init__(self, expiration_days: int = 30, throttle_seconds: float = 1.0):
         self.session = CachedRequests(expiration_days=expiration_days, throttle_seconds=throttle_seconds)
         l.debug(f'Initialized Wikipedia session with expiration_days={expiration_days} and throttle_seconds={throttle_seconds}')
 
@@ -39,6 +39,11 @@ class Wikipedia:
         sorted_headers = dict(sorted(Wikipedia.HEADERS.items()))
         l.debug(f'Querying {Wikipedia.API_URL} with params: {sorted_params} and headers: {sorted_headers}')
         response = self.session.get(Wikipedia.API_URL, params=sorted_params, headers=sorted_headers)
+
+        if not response.ok:
+            l.error(f'Error querying Wikipedia API: {response.status_code} - {response.text}')
+            l.error(f'Response Headers: {response.headers}')
+
         response.raise_for_status()
         results = response.json()
         l.debug(f'Response: {results}...')
