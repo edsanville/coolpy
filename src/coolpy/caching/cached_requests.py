@@ -26,12 +26,19 @@ class CachedRequests:
 
 
     def request(self, *args, **kwargs):
-        is_hit = self.is_cache_hit(*args, **kwargs)
+        is_cache_hit = self.is_cache_hit(*args, **kwargs)
         log.debug(f'Request args: {args}, kwargs: {kwargs}')
-        log.debug(color_text(f'Cache hit: {is_hit}', 'green' if is_hit else 'yellow'))
+        log.debug(color_text(f'Cache hit: {is_cache_hit}', 'green' if is_cache_hit else 'yellow'))
         response = self.cached_request(*args, **kwargs)
 
-        if not is_hit:
+        RETRYABLE_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
+        if is_cache_hit and response.status_code in RETRYABLE_STATUS_CODES:
+            log.warning(color_text(f'Retrying request due to status code {response.status_code}', 'yellow'))
+            response = session_request(*args, **kwargs)
+            log.debug(f'{self.throttle_seconds=}')
+            time.sleep(self.throttle_seconds)
+
+        if not is_cache_hit:
             log.debug(f'{self.throttle_seconds=}')
             time.sleep(self.throttle_seconds)
 
