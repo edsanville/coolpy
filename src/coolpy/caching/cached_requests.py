@@ -21,8 +21,8 @@ class CachedRequests:
     def __init__(self, expiration_days: float=1, throttle_seconds: float=0.0):
         self.expiration_days = expiration_days
         self.throttle_seconds = throttle_seconds
-        self.cached_request = cached_function(session_request, name='cached_requests', days=expiration_days)
-        self.is_cache_hit = is_cache_hit(session_request, name='cached_requests', days=expiration_days)
+        self.cached_request = cached_function(name='cached_requests', days=expiration_days)(session_request)
+        self.is_cache_hit = is_cache_hit(name='cached_requests', days=expiration_days)(session_request)
 
 
     def request(self, *args, **kwargs):

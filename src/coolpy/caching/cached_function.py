@@ -64,7 +64,7 @@ def cached_function(name: str | None=None, days=28.0) -> Callable[[F], F]:
     return ed
 
 
-def is_cache_hit(func: F, name: str | None=None, days=28.0) -> Callable[[F], Callable[..., bool]]:
+def is_cache_hit(name: str | None=None, days=28.0) -> Callable[[F], Callable[..., bool]]:
 
     def ed(func: F) -> Callable[..., bool]:
         nonlocal name
