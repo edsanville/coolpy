@@ -7,7 +7,7 @@ from PIL.Image import Image
 from typing import overload
 from .Wikicode import Wikicode, Template
 
-logging.basicConfig()
+logging.basicConfig(level=logging.INFO)
 l = logging.getLogger(__name__)
 
 BATCH_SIZE = 15

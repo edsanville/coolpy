@@ -36,6 +36,7 @@ class CachedRequests:
         if is_cache_hit and response.status_code in RETRYABLE_STATUS_CODES:
             log.warning(color_text(f'Retrying request due to status code {response.status_code}', 'yellow'))
             response = session_request(*args, **kwargs)
+            add_cache_entry('cached_requests', args, kwargs, response)
             log.debug(f'{self.throttle_seconds=}')
             time.sleep(self.throttle_seconds)
 
