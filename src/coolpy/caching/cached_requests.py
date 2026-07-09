@@ -5,7 +5,6 @@ import requests
 from requests import Session
 from coolpy.tui import color_text
 
-logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 log.debug(f'Initialized CachedRequests logger {__name__}')
 
