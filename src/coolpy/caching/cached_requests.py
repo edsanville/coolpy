@@ -9,6 +9,7 @@ log = logging.getLogger(__name__)
 log.debug(f'Initialized CachedRequests logger {__name__}')
 
 session = requests.Session()
+session.headers.update({'User-Agent': 'Coolpy.CachedRequestsBot/0.1.0 (https://github.com/edsanville/coolpy; edsanville@gmail.com) coolpy/0.1.0'})
 
 def session_request(*args, **kwargs):
     return session.request(*args, **kwargs)
