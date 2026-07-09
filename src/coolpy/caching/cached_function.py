@@ -29,6 +29,12 @@ def add_cache_entry(name: str, args: tuple, kwargs: dict, return_value: Any):
     cache.commit()
 
 
+def delete_cache_entry(name: str, args: tuple, kwargs: dict):
+    cache = init_db(name)
+    cache.execute('delete from cache where args is ? and kwargs is ?', (pickle.dumps(args), pickle.dumps(kwargs)))
+    cache.commit()
+
+
 def cached_function(name: str | None=None, days=28.0) -> Callable[[F], F]:
 
     def ed(func: F) -> F:

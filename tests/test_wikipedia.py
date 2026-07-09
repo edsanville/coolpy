@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from pprint import pprint
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 from coolpy.wikipedia import Wikipedia

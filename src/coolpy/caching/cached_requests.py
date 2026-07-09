@@ -5,6 +5,7 @@ import requests
 from requests import Session
 from coolpy.tui import color_text
 
+logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 log.debug(f'Initialized CachedRequests logger {__name__}')
 
@@ -30,21 +31,27 @@ class CachedRequests:
         is_cache_hit = self.is_cache_hit(*args, **kwargs)
         log.debug(f'Request args: {args}, kwargs: {kwargs}')
         log.debug(color_text(f'Cache hit: {is_cache_hit}', 'green' if is_cache_hit else 'yellow'))
-        response = self.cached_request(*args, **kwargs)
 
         RETRYABLE_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
-        if is_cache_hit and response.status_code in RETRYABLE_STATUS_CODES:
-            log.warning(color_text(f'Retrying request due to status code {response.status_code}', 'yellow'))
-            response = session_request(*args, **kwargs)
-            add_cache_entry('cached_requests', args, kwargs, response)
-            log.debug(f'{self.throttle_seconds=}')
-            time.sleep(self.throttle_seconds)
+        ATTEMPT_LIMIT = 3
 
-        if not is_cache_hit:
-            log.debug(f'{self.throttle_seconds=}')
-            time.sleep(self.throttle_seconds)
+        for attempt in range(ATTEMPT_LIMIT):
+            response = self.cached_request(*args, **kwargs)
 
-        return response
+            if response.status_code not in RETRYABLE_STATUS_CODES:
+                if not is_cache_hit:
+                    time.sleep(self.throttle_seconds)
+                return response
+
+            delete_cache_entry('cached_requests', args, kwargs)
+
+            retry_after = response.headers.get('Retry-After', self.throttle_seconds * (3 ** (attempt + 1)))
+
+            log.warning(color_text(f'Retrying request due to status code {response.status_code}, attempt {attempt + 1}/{ATTEMPT_LIMIT}, {retry_after=}', 'yellow'))
+
+            time.sleep(float(retry_after))  # Exponential backoff
+
+        raise Exception(f"Request failed after {ATTEMPT_LIMIT} attempts with {response.__dict__}")
     
 
     def get(self, *args, **kwargs):
